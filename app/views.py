@@ -5,8 +5,12 @@ Werkzeug Documentation:  https://werkzeug.palletsprojects.com/
 This file creates your application.
 """
 
-from app import app
-from flask import render_template, request, jsonify, send_file
+from app import app, db
+from flask import render_template, request, jsonify, send_from_directory
+from app.models import Movie
+from app.forms import MovieForm
+from werkzeug.utils import secure_filename
+from flask_wtf.csrf import generate_csrf
 import os
 
 
@@ -38,11 +42,13 @@ def form_errors(form):
 
     return error_messages
 
+
 @app.route('/<file_name>.txt')
 def send_text_file(file_name):
     """Send your static text file."""
     file_dot_text = file_name + '.txt'
     return app.send_static_file(file_dot_text)
+
 
 @app.route('/api/v1/movies', methods=['POST'])
 def movies():
@@ -71,7 +77,7 @@ def movies():
 
 @app.route('/api/v1/movies', methods=['GET'])
 def get_movies():
-    movies = Movie.query.all()
+    all_movies = Movie.query.all()
     movie_list = [
         {
             'id':          m.id,
@@ -79,7 +85,7 @@ def get_movies():
             'description': m.description,
             'poster':      f'/api/v1/posters/{m.poster}'
         }
-        for m in movies
+        for m in all_movies
     ]
     return jsonify({'movies': movie_list})
 
@@ -112,4 +118,4 @@ def add_header(response):
 @app.errorhandler(404)
 def page_not_found(error):
     """Custom 404 page."""
-    return render_template('404.html'), 404
+    return jsonify(error="Page not found"), 404
