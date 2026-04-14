@@ -44,6 +44,58 @@ def send_text_file(file_name):
     file_dot_text = file_name + '.txt'
     return app.send_static_file(file_dot_text)
 
+@app.route('/api/v1/movies', methods=['POST'])
+def movies():
+    form = MovieForm()
+    if form.validate_on_submit():
+        title       = form.title.data
+        description = form.description.data
+        poster_file = form.poster.data
+
+        filename = secure_filename(poster_file.filename)
+        poster_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+
+        movie = Movie(title=title, description=description, poster=filename)
+        db.session.add(movie)
+        db.session.commit()
+
+        return jsonify({
+            'message':     'Movie Successfully added',
+            'title':       title,
+            'poster':      filename,
+            'description': description
+        }), 201
+    else:
+        return jsonify({'errors': form_errors(form)}), 400
+
+
+@app.route('/api/v1/movies', methods=['GET'])
+def get_movies():
+    movies = Movie.query.all()
+    movie_list = [
+        {
+            'id':          m.id,
+            'title':       m.title,
+            'description': m.description,
+            'poster':      f'/api/v1/posters/{m.poster}'
+        }
+        for m in movies
+    ]
+    return jsonify({'movies': movie_list})
+
+
+@app.route('/api/v1/posters/<filename>', methods=['GET'])
+def get_poster(filename):
+    return send_from_directory(
+        os.path.join(os.getcwd(), app.config['UPLOAD_FOLDER']),
+        filename
+    )
+
+
+@app.route('/api/v1/csrf-token', methods=['GET'])
+def get_csrf():
+    return jsonify({'csrf_token': generate_csrf()})
+
 
 @app.after_request
 def add_header(response):
